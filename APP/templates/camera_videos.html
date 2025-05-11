@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video của {{ camera.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 26px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 8px;
+            color: #ecf0f1;
+            text-decoration: underline;
+            font-size: 16px;
+        }
+
+        .content {
+            width: 90%;
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+
+        .video-card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .video-card video {
+            width: 100%;
+            border-radius: 6px;
+        }
+
+        .video-info {
+            margin-top: 10px;
+        }
+
+        .video-info p {
+            margin: 4px 0;
+            font-size: 16px;
+        }
+
+        .alert-list {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .alert-list li {
+            margin-bottom: 6px;
+            color: #e74c3c;
+            font-size: 15px;
+        }
+
+        .no-alert {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PHẦN HEADER -->
+    <div class="header">
+        <h2>Danh sách video của {{ camera.name }} ({{ camera.location }})</h2>
+        <a class="back-link" href="{{ url_for('cameras') }}">⬅️ Chọn camera khác</a>
+    </div>
+
+    <!-- PHẦN NỘI DUNG -->
+    <div class="content">
+        {% for video, events in video_event_map.items() %}
+            <div class="video-card">
+                <video controls>
+                    <source src="{{ url_for('static', filename=video.file_path.replace('static/', '')) }}" type="video/mp4">
+                    Trình duyệt không hỗ trợ video.
+                </video>
+                <div class="video-info">
+                    <p><strong>File:</strong> {{ video.file_path }}</p>
+                    <p><strong>Thời gian:</strong> {{ video.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+
+                    {% if events %}
+                        <p><strong>Cảnh báo:</strong></p>
+                        <ul class="alert-list">
+                            {% for event in events %}
+                                <li>
+                                    <strong>{{ event.event_type }}</strong> - {{ event.description }} 
+                                    ({{ event.timestamp.strftime('%Y-%m-%d %H:%M:%S') }})
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="no-alert">Không có cảnh báo</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>

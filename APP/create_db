@@ -1,0 +1,33 @@
+from flask import Flask
+from model import db, User, Camera, Video, DangerEvent
+from datetime import datetime
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+db.init_app(app)
+
+with app.app_context():
+    db.drop_all()     # Xóa nếu muốn reset database
+    db.create_all()
+
+    # Thêm user mẫu
+    user = User(username='admin', password='admin')  # Nên mã hóa password khi triển khai
+    db.session.add(user)
+
+    # Thêm camera mẫu
+    cam1 = Camera(name='Camera 1', location='Cổng chính')
+    cam2 = Camera(name='Camera 2', location='Tầng hầm')
+    db.session.add_all([cam1, cam2])
+    db.session.commit()
+
+    # Thêm video mẫu
+    vid1 = Video(camera_id=1, file_path='videos/camera_1/video1.mp4')
+    db.session.add(vid1)
+    db.session.commit()
+
+    # Thêm event nguy hiểm mẫu
+    event1 = DangerEvent(video_id=1, event_type='Ngủ gật', description='Tài xế nhắm mắt hơn 5s')
+    db.session.add(event1)
+    db.session.commit()
+
+    print("✅ Database đã được tạo kèm dữ liệu mẫu.")

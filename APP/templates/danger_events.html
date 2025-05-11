@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* CSS cho trang tìm kiếm */
+form {
+    width: 80%;
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+form div {
+    margin-bottom: 15px;
+}
+
+form label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+form select, form input {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+form button {
+    padding: 10px 15px;
+    background-color: #c0392b;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+form button:hover {
+    background-color: #e74c3c;
+}
+
+/* Định dạng khi form có các lựa chọn đã được chọn */
+form select:focus, form input:focus {
+    outline: none;
+    border-color: #c0392b;
+}
+
+h2 {
+    text-align: center;
+    color: #333;
+}
+
+label, select, input, button {
+    font-family: Arial, sans-serif;
+}
+
+.back-btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #3498db;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.back-btn:hover {
+    background-color: #2980b9;
+}
+    </style>
+</head>
+
+<body>
+<form method="GET" action="{{ url_for('danger_events') }}">
+    <div>
+        <label for="camera">Chọn Camera:</label>
+        <select name="camera" id="camera">
+            <option value="">Tất cả</option>
+            {% for camera in cameras %}
+                <option value="{{ camera.id }}" {% if camera.id == selected_camera %}selected{% endif %}>
+                    {{ camera.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <label for="start_timestamp">Từ thời gian:</label>
+        <input type="datetime-local" name="start_timestamp" id="start_timestamp" value="{{ selected_start_timestamp }}">
+    </div>
+
+    <div>
+        <label for="end_timestamp">Đến thời gian:</label>
+        <input type="datetime-local" name="end_timestamp" id="end_timestamp" value="{{ selected_end_timestamp }}">
+    </div>
+
+    <div>
+        <label for="behavior">Chọn loại hành vi:</label>
+        <select name="behavior" id="behavior">
+            <option value="">Tất cả</option>
+            <option value="Đánh nhau" {% if selected_behavior == 'Đánh nhau' %}selected{% endif %}>Đánh nhau</option>
+            <option value="Ngã" {% if selected_behavior == 'Ngã' %}selected{% endif %}>Ngã</option>
+            <option value="Lảng vảng" {% if selected_behavior == 'Lảng vảng' %}selected{% endif %}>Lảng vảng</option>
+        </select>
+    </div>
+
+    <button type="submit">Tìm kiếm</button>
+</form>
+
+<!-- Nút Back về trang Dashboard -->
+<a href="{{ url_for('dashboard') }}" class="back-btn">Trở về Dashboard</a>
+
+</body>
+</html>
