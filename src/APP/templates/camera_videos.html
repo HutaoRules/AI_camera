@@ -88,36 +88,16 @@
         <h2>Danh sách video của {{ camera.name }} ({{ camera.location }})</h2>
         <a class="back-link" href="{{ url_for('cameras') }}">⬅️ Chọn camera khác</a>
     </div>
+<!-- PHẦN HEADER -->
+<div class="header">
+    <h2>Danh sách video của {{ camera.name }} ({{ camera.location }})</h2>
+    <a class="back-link" href="{{ url_for('cameras') }}">⬅️ Chọn camera khác</a>
+</div>
 
-    <!-- PHẦN NỘI DUNG -->
-    <div class="content">
-        {% for video, events in video_event_map.items() %}
-            <div class="video-card">
-                <video controls>
-                    <source src="{{ url_for('static', filename=video.file_path.replace('static/', '')) }}" type="video/mp4">
-                    Trình duyệt không hỗ trợ video.
-                </video>
-                <div class="video-info">
-                    <p><strong>File:</strong> {{ video.file_path }}</p>
-                    <p><strong>Thời gian:</strong> {{ video.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-
-                    {% if events %}
-                        <p><strong>Cảnh báo:</strong></p>
-                        <ul class="alert-list">
-                            {% for event in events %}
-                                <li>
-                                    <strong>{{ event.event_type }}</strong> - {{ event.description }} 
-                                    ({{ event.timestamp.strftime('%Y-%m-%d %H:%M:%S') }})
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="no-alert">Không có cảnh báo</p>
-                    {% endif %}
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-
+<!-- PHẦN STREAM TRỰC TIẾP -->
+<div class="live-stream">
+    <h3>🔴 Trực tiếp từ camera</h3>
+    <img src="{{ url_for('video_feed', camera_id=camera.id) }}" alt="Live Stream" style="max-width: 100%; border: 2px solid #444; border-radius: 8px; margin-bottom: 20px;">
+</div>
 </body>
 </html>

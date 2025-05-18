@@ -15,8 +15,8 @@ with app.app_context():
     db.session.add(user)
 
     # Thêm camera mẫu
-    cam1 = Camera(name='Camera 1', location='Cổng chính')
-    cam2 = Camera(name='Camera 2', location='Tầng hầm')
+    cam1 = Camera(name='Camera 1', location='Cổng chính', rtsp_url='rtsp://example.com/cam1')
+    cam2 = Camera(name='Camera 2', location='Tầng hầm', rtsp_url='rtsp://example.com/cam2')
     db.session.add_all([cam1, cam2])
     db.session.commit()
 

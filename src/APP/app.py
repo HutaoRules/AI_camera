@@ -1,8 +1,9 @@
-from flask import Flask, render_template, redirect, url_for, request, session, flash
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify , Response
 from model import db, User, Camera, Video, DangerEvent
 from werkzeug.security import check_password_hash
 import datetime
 import os
+import cv2
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -150,6 +151,45 @@ def danger_events():
                            selected_end_timestamp=selected_end_timestamp,
                            selected_behavior=selected_behavior)
 
+@app.route("/api/receive_action", methods=["POST"])
+def receive_action():
+    data = request.json
+    write_action(data)
+    return jsonify({"status": "received"})
+
+def write_action(data):
+    # Giả sử bạn đã có một hàm để ghi dữ liệu vào cơ sở dữ liệu
+    # Ví dụ: Ghi vào bảng DangerEvent
+    new_event = DangerEvent(
+        camera_id=data['camera_id'],
+        event_type=data['event_type'],
+        timestamp=datetime.datetime.now(),
+        video_id=data['video_id']
+    )
+    db.session.add(new_event)
+    db.session.commit()
+
+def gen_frames(camera_id):
+    # Giả sử bạn đã có một hàm để lấy video từ camera
+    # Ví dụ: Lấy video từ RTSP stream
+    camera_rtsp = Camera.query.get(camera_id).rtsp_url
+    cap = cv2.VideoCapture(camera_rtsp)
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
+        else:
+            # Encode the frame in JPEG format
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+@app.route('/video_feed/<int:camera_id>')
+def video_feed(camera_id):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    return Response(gen_frames(camera_id),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
     app.run(debug=True)
