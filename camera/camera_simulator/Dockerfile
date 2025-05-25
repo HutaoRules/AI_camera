@@ -1,6 +1,0 @@
-FROM jrottenberg/ffmpeg:4.4-alpine
-
-COPY ./stream.sh ./stream.sh
-RUN chmod +x /stream.sh
-
-ENTRYPOINT ["/stream.sh"]

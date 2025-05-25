@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chọn camera</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ecf0f1;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #3498db;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 16px;
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        .content {
+            margin-top: 40px;
+            background-color: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            width: 500px;
+            text-align: center;
+        }
+
+        .camera-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .camera-list li {
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 6px;
+            background-color: #f2f2f2;
+            transition: background-color 0.3s ease;
+        }
+
+        .camera-list li:hover {
+            background-color: #dceeff;
+        }
+
+        .camera-list a {
+            text-decoration: none;
+            color: #2c3e50;
+            font-size: 18px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PHẦN TIÊU ĐỀ -->
+    <div class="header">
+        <h2>Chọn camera để xem video</h2>
+        <a class="back-link" href="{{ url_for('admin.dashboard') }}">⬅️ Quay lại Dashboard</a>
+    </div>
+
+    <!-- PHẦN DANH SÁCH CAMERA -->
+    <div class="content">
+        <ul class="camera-list">
+            {% for camera in cameras %}
+                <li>
+                    <a href="{{ url_for('camera.camera_videos', camera_id=camera.id) }}">
+                        {{ camera.name }} - {{ camera.location }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</body>
+</html>

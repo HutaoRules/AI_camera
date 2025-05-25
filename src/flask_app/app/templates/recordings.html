@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video đã lưu từ {{ camera.name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .chunk-list {
+            margin-top: 20px;
+        }
+
+        video {
+            max-width: 100%;
+            margin-bottom: 15px;
+            border: 2px solid #555;
+            border-radius: 8px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>📁 Video đã lưu từ {{ camera.name }} ({{ camera.location }})</h2>
+    <div class="chunk-list">
+        {% if chunks %}
+            {% for chunk in chunks %}
+                <div>
+                    <p>🕒 {{ chunk.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <video controls>
+                        <source src="{{ url_for('static', filename=chunk.chunk_path) }}" type="video/mp4">
+                        Trình duyệt không hỗ trợ video.
+                    </video>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Chưa có video nào được lưu.</p>
+        {% endif %}
+    </div>
+
+    <a class="back-link" href="{{ url_for('camera.cameras') }}">⬅️ Quay lại danh sách camera</a>
+
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sửa thông tin camera</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+        }
+
+        form {
+            border: 1px solid #ccc;
+            padding: 20px;
+            background-color: #f2f2f2;
+            border-radius: 6px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+        }
+
+        button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h2>✏️ Sửa thông tin camera</h2>
+
+    <form method="POST">
+        <label>Tên Camera:</label>
+        <input type="text" name="name" value="{{ camera.name }}" required>
+
+        <label>Vị trí:</label>
+        <input type="text" name="location" value="{{ camera.location }}" required>
+
+        <label>Địa chỉ IP:</label>
+        <input type="text" name="ip_address" value="{{ camera.rtsp_url }}" required>
+
+        <button type="submit">💾 Lưu thay đổi</button>
+    </form>
+
+    <a href="{{ url_for('admin.admin') }}">⬅️ Quay lại danh sách</a>
+</body>
+</html>

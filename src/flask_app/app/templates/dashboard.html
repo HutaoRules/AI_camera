@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #ecf0f1;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            text-align: center;
+        }
+
+        .dashboard-container h2 {
+            font-size: 26px;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .dashboard-container a {
+            display: block;
+            margin: 15px 0;
+            padding: 12px;
+            text-decoration: none;
+            background-color: #3498db;
+            color: white;
+            font-size: 18px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .dashboard-container a:hover {
+            background-color: #2980b9;
+        }
+
+        .dashboard-container a:active {
+            background-color: #1abc9c;
+        }
+
+        .logout-link {
+            margin-top: 30px;
+            color: #e74c3c;
+            font-size: 18px;
+            text-decoration: underline;
+        }
+        .notification-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        }
+        .notification {
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            min-width: 250px;
+            max-width: 400px;
+            animation: slideIn 0.5s ease-out, fadeOut 0.5s ease-in 4.5s forwards;
+            font-size: 16px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="notification-container" class="notification-container">
+    <ul id="alerts"></ul>
+
+    <script>
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+    
+        socket.on('new_alert', function(data) {
+            // Ghi log alert vào danh sách (tuỳ chọn)
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `🚨 [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
+    
+            // Tạo popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerText = `🚨 Cảnh báo: '${data.alert}' trên Camera ${data.camera_id}`;
+            container.appendChild(notification);
+    
+            // Phát âm thanh
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+    
+            // Tự động xoá sau 5 giây
+            setTimeout(() => {
+                container.removeChild(notification);
+            }, 5000);
+        });
+    </script>
+    </div>
+    
+    <div class="dashboard-container">
+        <h2>Chào mừng đến Dashboard</h2>
+        <p><a href="{{ url_for('admin.admin') }}">🛠️ Trang quản trị (Admin)</a></p>
+        <p><a href="{{ url_for('camera.cameras') }}">📷 Kiểm tra các camera</a></p>
+        <p><a href="{{ url_for('event.danger_events') }}">⚠️ Xem lại các hành vi nguy hiểm</a></p>
+        <p><a class="logout-link" href="{{ url_for('auth.logout') }}">🚪 Đăng xuất</a></p>
+    </div>
+</body>
+</html>

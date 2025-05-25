@@ -1,0 +1,4 @@
+google-cloud-pubsub
+requests
+onnxruntime
+numpy
