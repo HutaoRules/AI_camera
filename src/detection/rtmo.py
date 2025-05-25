@@ -1,95 +1,60 @@
-from tracker import STrack, ByteTracker
-import onnxruntime as ort
-import numpy as np
-from typing import List, Tuple
 import cv2
-
-
-tracker = ByteTracker()
+import numpy as np
+import onnxruntime as ort
+from src.detection.bytetrack_utils.byte_tracker import BYTETracker, STrack
 
 def apply_nms(boxes, scores, iou_threshold=0.65):
-    boxes_cv = []
-    for box in boxes:
-        x_min, y_min, x_max, y_max = box
-        boxes_cv.append([int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)])
+    boxes_cv = [[int(x), int(y), int(x2 - x), int(y2 - y)] for x, y, x2, y2 in boxes]
     indices = cv2.dnn.NMSBoxes(boxes_cv, scores, score_threshold=0.1, nms_threshold=iou_threshold)
     return indices.flatten() if len(indices) > 0 else []
 
-def rtmo_inference(
-    model_path: str,
-    input_data: np.ndarray,
-    input_shape: Tuple[int, int],
-    conf_thres: float = 0.5,
-    nms_thres: float = 0.4,
-) -> List[STrack]:
-    """
-    Run inference on the RTMO model.
+def process_frame(frame, session, tracker):
+    input_image = cv2.resize(frame, (640, 640)).astype(np.float32)
+    input_image = np.transpose(input_image, (2, 0, 1))[None, :, :, :]
 
-    Args:
-        model_path (str): Path to the ONNX model.
-        input_data (np.ndarray): Input data for the model.
-        input_shape (Tuple[int, int]): Shape of the input data.
-        conf_thres (float): Confidence threshold for detections.
-        nms_thres (float): Non-maximum suppression threshold.
+    outputs = session.run(['dets', 'keypoints'], {session.get_inputs()[0].name: input_image})
+    dets, keypoints = outputs
 
-    Returns:
-        List[STrack]: List of detected tracks.
-    """
-    # Load the ONNX model
-    session = ort.InferenceSession(model_path)
-
-    # Prepare input data
-    input_name = session.get_inputs()[0].name
-    input_data = np.expand_dims(input_data, axis=0)
-    #resize input data to the model's expected input shape
-    input_data = cv2.resize(input_data, input_shape)
-    input_data = input_data.astype(np.float32)
-    input_data = np.transpose(input_data, (2, 0, 1))
-    input_data = np.expand_dims(input_data, axis=0)
-    
-    # Run inference
-    output = session.run(['dets', 'keypoints'], {input_name: input_data})
-
-    # Extract detections and keypoints
-    detections = output[0]
-    keypoints = output[1]
-
-    boxes = []
-    scores = []
-    for i in range(detections.shape[1]):
-        box = detections[0, i]
-        x_min, y_min, x_max, y_max, score = box[0], box[1], box[2], box[3], box[4]
-        if score < conf_thres:
+    boxes, scores = [], []
+    for i in range(dets.shape[1]):
+        x1, y1, x2, y2, score = dets[0, i, :5]
+        if score < 0.1:
             continue
-        x_min = int(x_min * input_shape[1] / 640)
-        y_min = int(y_min * input_shape[0] / 640)
-        x_max = int(x_max * input_shape[1] / 640)
-        y_max = int(y_max * input_shape[0] / 640)
-        boxes.append([x_min, y_min, x_max, y_max])
+        x1 = int(x1 * frame.shape[1] / 640)
+        y1 = int(y1 * frame.shape[0] / 640)
+        x2 = int(x2 * frame.shape[1] / 640)
+        y2 = int(y2 * frame.shape[0] / 640)
+        boxes.append([x1, y1, x2, y2])
         scores.append(float(score))
-    keep_indices = apply_nms(boxes, scores, iou_threshold=nms_thres)
+
+    keep_indices = apply_nms(boxes, scores)
+    if len(keep_indices) == 0:
+        return []
+
     detections = []
     for idx in keep_indices:
-        x_min, y_min, x_max, y_max = boxes[idx]
-        score = scores[idx]
-        detection = [x_min, y_min, x_max, y_max, score]
-        detections.append(detection)
-    
-    #apply tracker
-    for idx in keep_indices:
-        x_min, y_min, x_max, y_max = boxes[idx]
-        score = scores[idx]
-        tracker.update([x_min, y_min, x_max, y_max], score)
-        print(f"Tracker update: {x_min}, {y_min}, {x_max}, {y_max}, {score}")
+        x1, y1, x2, y2 = boxes[idx]
+        det_score = scores[idx]
+        detections.append(STrack(np.array([x1, y1, x2, y2]), det_score))
 
-    # Process detections
-    tracks = []
-    for detection in detections:
-        if detection[4] > conf_thres:
-            track = STrack(detection[:4], detection[4])
-            tracks.append(track)
+    STrack.multi_predict(tracker.tracked_stracks)
+    detections_array = np.array([det.tlbr.tolist() + [det.score] for det in detections])
+    online_targets = tracker.update(detections_array, [frame.shape[0], frame.shape[1]], (frame.shape[1], frame.shape[0]))
 
-    # Apply NMS
-    tracker.update_tracks(tracks, frame_id=0, match_thresh=nms_thres)
+    results = []
+    for t in online_targets:
+        pid = t.track_id
+        x1, y1, x2, y2 = map(int, t.tlbr)
 
-    return tracker.tracked_tracks
+        # Lấy keypoints tương ứng với pid nếu có
+        if pid < keypoints.shape[1]:
+            kps = []
+            for j in range(keypoints.shape[2]):
+                x, y, conf = keypoints[0, pid, j]
+                kps.append((float(x), float(y), float(conf)))
+            results.append({
+                'pid': pid,
+                'keypoints': kps
+            })
+
+    return results
