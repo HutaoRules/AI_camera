@@ -1,11 +1,13 @@
-import onnxruntime
+import onnxruntime as ort
 import numpy as np
 import requests
 from collections import defaultdict, deque
 import time
 
 # Load ONNX model
-sess = onnxruntime.InferenceSession("stgcnppbone_48_5_17_model.onnx")
+sess = ort.InferenceSession("/home/nvt/Workspaces/AI_camera/src/recognition/stgcnppbone_48_5_17_model.onnx")
+
+ngrok_url = "https://028c-2001-ee0-8201-84aa-97fa-a5c9-8106-a51.ngrok-free.app/api/receive_alert"
 
 # Buffer keypoints theo camera with sliding window approach
 FRAME_SEQUENCE_LENGTH = 48
@@ -14,6 +16,7 @@ SLIDING_WINDOW_STEP = 8  # Process every 8 frames instead of waiting for 48 new 
 # Buffer keypoints theo camera
 buffer_dict = defaultdict(lambda: deque(maxlen=FRAME_SEQUENCE_LENGTH))
 frame_counters = defaultdict(int)  # Track frames for sliding window
+num_persons = 2
 
 # Counter theo pid (person_id) để phát hiện lảng vảng
 loitering_counter = defaultdict(lambda: defaultdict(int))  # {camera_id: {pid: count}}
@@ -90,66 +93,79 @@ def normalize_frame(frame_kpts):
 
 def perform_action_recognition(camera_id, pid, timestamp):
     """Run the action recognition inference on the current buffer"""
+    num_people = len(pid)
     if len(buffer_dict[camera_id]) < FRAME_SEQUENCE_LENGTH:
         return  # Not enough frames yet
         
     pose_sequence = np.stack(list(buffer_dict[camera_id]), axis=0)
     pose_sequence = np.transpose(pose_sequence, (1, 0, 2, 3))
-    input_shape = (1, 2, 48, 17, 3)
+    input_shape = (1, num_people, 48, 17, 3)
     pose_input = np.zeros(input_shape, dtype=np.float32)
     
-    for m in range(min(pose_sequence.shape[0], 2)):
+    for m in range(min(pose_sequence.shape[0], num_people)):
         for t in range(min(pose_sequence.shape[1], 48)):
             for v in range(17):
                 for c in range(3):  # x, y, score
                     pose_input[0, m, t, v, c] = pose_sequence[m, t, v, c]
 
     input_feed = {sess.get_inputs()[0].name: pose_input}
+    start_infer = time.time()
     pred = sess.run(None, input_feed)[0]
+    end_infer = time.time()
+    print(f"Inference time for Camera={camera_id}: {end_infer - start_infer:.4f} seconds")
     label = int(np.argmax(pred))
+    print(f"Action label for Camera={camera_id}: {label}")
     action = ""
 
     # top 1 hành động 
-    if label == 0:
+    if label == 0 or label == 2 or label == 3:
         action = "fight"
-    elif label == 1:
+    elif label == 4:
         action = "falling"
-    elif label == 2:
+    elif label == 5 or label == 6:
         action = "walking"
 
-    if label == 0 or label == 1:
+    if action == "fight" or action == "falling":
         payload = {
-            "camera_id": camera_id,
-            "pid": pid,
+            "cam_id": camera_id,
             "timestamp": timestamp,
             "action": action
         }
 
         try:
-            requests.post("http://flask-server-ip:5000/api/receive_action", json=payload)
-            print(f"[ACTION] Detected {action} for PID={pid} on Camera={camera_id}")
+            requests.post(ngrok_url, json=payload)
+            print(f"[ACTION] Detected {action} on Camera={camera_id}")
         except Exception as e:
             print(f"Failed to send action result: {e}")
 
 def run_inference(keypoints_dict):
-    camera_id = keypoints_dict["camera_id"]
+    camera_id = keypoints_dict["cam_id"]
     pid = keypoints_dict["pid"]
     keypoints = keypoints_dict["keypoints"]
     timestamp = keypoints_dict["timestamp"]
 
+    frame_keypoints = np.zeros((num_persons, 17, 3), dtype=np.float32)
+    for i,person_kpt in enumerate(keypoints):
+        if i >= num_persons:
+            break
+        per_kpt = np.array(person_kpt, dtype=np.float32)
+
+        frame_keypoints[i] = per_kpt
+    
+
     # tinh so luong nguoi dua tren so luong person_id
-    num_people = len(set(keypoints_dict["pid"]))
+    num_people = len(keypoints_dict["pid"])
 
     if num_people > CROWD_PERSON_THRESHOLD:
         crowd_counter[camera_id] += 1
         if crowd_counter[camera_id] >= CROWD_FRAME_THRESHOLD:
             payload = {
-                "camera_id": camera_id,
+                "cam_id": camera_id,
                 "timestamp": timestamp,
                 "alert": "crowd"
             }
             try:
-                requests.post("http://flask-server-ip:5000/api/receive_alert", json=payload)
+                requests.post(ngrok_url, json=payload)
                 print(f"[ALERT] Crowd detected on Camera={camera_id}")
             except Exception as e:
                 print(f"Failed to send crowd alert: {e}")
@@ -157,26 +173,26 @@ def run_inference(keypoints_dict):
             crowd_counter[camera_id] = 0
 
     # Cập nhật đếm số frame người này xuất hiện
-    loitering_counter[camera_id][pid] += 1
+    for pids in pid:
+        loitering_counter[camera_id][pids] += 1
 
-    # Nếu quá ngưỡng lảng vảng, gửi cảnh báo
-    if loitering_counter[camera_id][pid] >= LOITERING_THRESHOLD:
-        payload = {
-            "camera_id": camera_id,
-            "pid": pid,
-            "timestamp": timestamp,
-            "alert": "loitering"
-        }
-        try:
-            requests.post("http://flask-server-ip:5000/api/receive_alert", json=payload)
-            print(f"[ALERT] Loitering detected for PID={pid} on Camera={camera_id}")
-        except Exception as e:
-            print(f"Failed to send loitering alert: {e}")
-        # Reset lại count để không gửi lại liên tục
-        loitering_counter[camera_id][pid] = 0
+        # Nếu quá ngưỡng lảng vảng, gửi cảnh báo
+        if loitering_counter[camera_id][pids] >= LOITERING_THRESHOLD:
+            payload = {
+                "cam_id": camera_id,
+                "timestamp": timestamp,
+                "alert": "loitering"
+            }
+            try:
+                requests.post(ngrok_url, json=payload)
+                print(f"[ALERT] Loitering detected  on Camera={camera_id}")
+            except Exception as e:
+                print(f"Failed to send loitering alert: {e}")
+            # Reset lại count để không gửi lại liên tục
+            loitering_counter[camera_id][pids] = 0
 
     # Lưu keypoints vào buffer để nhận diện hành động
-    buffer_dict[camera_id].append(keypoints)
+    buffer_dict[camera_id].append(normalize_frame(frame_keypoints))
     frame_counters[camera_id] += 1
 
     # Implement sliding window approach:
@@ -184,7 +200,8 @@ def run_inference(keypoints_dict):
     if len(buffer_dict[camera_id]) == FRAME_SEQUENCE_LENGTH or (
         len(buffer_dict[camera_id]) >= FRAME_SEQUENCE_LENGTH and 
         frame_counters[camera_id] % SLIDING_WINDOW_STEP == 0
-    ):
+    ):  
+        print(f"Running action recognition for Camera={camera_id} at timestamp={timestamp}")
         perform_action_recognition(camera_id, pid, timestamp)
         
         # Instead of clearing the buffer, we keep it for sliding window

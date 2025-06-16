@@ -60,3 +60,252 @@ button:hover, input[type="submit"]:hover {
     color: red;
     margin-bottom: 15px;
 }
+
+
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 20px 25px;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.4);
+            min-width: 300px;
+            font-size: 1em;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+            animation: slideInRight 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                       fadeOutRight 0.6s ease-in 4.4s forwards;
+        }
+
+        .notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .notification-icon {
+            margin-right: 10px;
+            font-size: 1.2em;
+            animation: bounce 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes bounce {
+            to { transform: translateY(-3px); }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOutRight {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        /* Alert List - FIXED POSITIONING */
+        #alerts {
+            position: fixed;
+            top: 70px; /* Moved down to avoid overlapping the button */
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            display: none;
+            z-index: 10000; /* Higher z-index */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        #alerts h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+            font-size: 1.2em;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(52, 152, 219, 0.3);
+        }
+
+        #alerts li {
+            list-style: none;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        #alerts li:last-child {
+            border-bottom: none;
+        }
+
+        #alerts li i {
+            color: #e74c3c;
+            margin-right: 8px;
+        }
+
+        .alerts-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .alerts-close:hover {
+            color: #e74c3c;
+        }
+
+        /* Show alerts toggle - FIXED POSITIONING */
+        .alerts-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            z-index: 9999; /* High z-index but lower than alerts */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .alerts-toggle:hover {
+            background: rgba(0, 0, 0, 0.95);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .alerts-toggle.has-alerts {
+            background: rgba(231, 76, 60, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        /* Test Alert Button */
+        .test-alert-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        .test-alert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                margin: 10px;
+                padding: 30px 20px;
+                max-width: 90vw;
+            }
+
+            .dashboard-title {
+                font-size: 2em;
+            }
+
+            .menu-item {
+                font-size: 1em;
+                padding: 18px 20px;
+            }
+
+            .notification-container {
+                top: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+            }
+
+            .notification {
+                min-width: auto;
+                margin-bottom: 10px;
+            }
+
+            #alerts {
+                top: 70px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+
+            .alerts-toggle {
+                left: 10px;
+                top: 10px;
+            }
+
+            .test-alert-btn {
+                left: 10px;
+                bottom: 10px;
+            }
+        }
+
+        /* Loading animation */
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }

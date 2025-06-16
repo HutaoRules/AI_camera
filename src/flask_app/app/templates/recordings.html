@@ -1,52 +1,418 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video đã lưu từ {{ camera.name }}</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23ffffff" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="%23ffffff" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .camera-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+
+        .video-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .video-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .video-header .time-icon {
+            font-size: 1.2rem;
+        }
+
+        .video-header .timestamp {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .video-container {
+            position: relative;
             padding: 20px;
         }
 
-        .chunk-list {
-            margin-top: 20px;
+        video {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
 
-        video {
-            max-width: 100%;
-            margin-bottom: 15px;
-            border: 2px solid #555;
-            border-radius: 8px;
+        video:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+            opacity: 0.8;
         }
 
         .back-link {
-            display: inline-block;
-            margin-top: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             text-decoration: none;
-            color: #555;
+            border-radius: 50px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2a5298;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .camera-icon {
+                font-size: 2rem;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .video-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        /* Loading Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .video-card {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .video-card:nth-child(2) { animation-delay: 0.1s; }
+        .video-card:nth-child(3) { animation-delay: 0.2s; }
+        .video-card:nth-child(4) { animation-delay: 0.3s; }
     </style>
+    <script>
+        // Socket.IO và Alert System
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+        let alertCount = 0;
+
+        // Toggle alerts visibility
+        function toggleAlerts() {
+            const alerts = document.getElementById('alerts');
+            alerts.style.display = alerts.style.display === 'none' || alerts.style.display === '' ? 'block' : 'none';
+        }
+
+        // Update alerts toggle text
+        function updateAlertsToggle() {
+            const toggle = document.querySelector('.alerts-toggle');
+            if (alertCount > 0) {
+                toggle.innerHTML = `<i class="fas fa-bell"></i> Lịch sử cảnh báo (${alertCount})`;
+                toggle.style.background = 'rgba(231, 76, 60, 0.8)';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bell"></i> Lịch sử cảnh báo';
+                toggle.style.background = 'rgba(0, 0, 0, 0.7)';
+            }
+        }
+
+        // Handle new alerts
+        socket.on('new_alert', function(data) {
+            alertCount++;
+            updateAlertsToggle();
+
+            // Add to alert history
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `<i class="fas fa-exclamation-circle"></i> [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
+
+            // Create notification popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-triangle notification-icon"></i>
+                <strong>Cảnh báo:</strong> '${data.alert}' trên Camera ${data.camera_id}
+            `;
+            container.appendChild(notification);
+
+            // Play alert sound
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    container.removeChild(notification);
+                }
+            }, 5000);
+        });
+
+        // Add loading animation to menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = 'block';
+                
+                // Hide spinner after navigation (in case navigation is slow)
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            });
+        });
+
+        // Initialize alerts toggle
+        updateAlertsToggle();
+
+        // Add entrance animation delay to menu items
+        document.querySelectorAll('.menu-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+            item.style.animation = 'slideUp 0.6s ease-out forwards';
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+        });
+
+        // Reveal menu items one by one
+        setTimeout(() => {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            });
+        }, 300);
+    </script>
+
 </head>
 <body>
+        <!-- Alerts Toggle Button -->
+    <button class="alerts-toggle" onclick="toggleAlerts()">
+        <i class="fas fa-bell"></i> Lịch sử cảnh báo
+    </button>
 
-    <h2>📁 Video đã lưu từ {{ camera.name }} ({{ camera.location }})</h2>
-    <div class="chunk-list">
-        {% if chunks %}
-            {% for chunk in chunks %}
-                <div>
-                    <p>🕒 {{ chunk.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                    <video controls>
-                        <source src="{{ url_for('static', filename=chunk.chunk_path) }}" type="video/mp4">
-                        Trình duyệt không hỗ trợ video.
-                    </video>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>Chưa có video nào được lưu.</p>
-        {% endif %}
+    <!-- Alert History -->
+    <div id="alerts">
+        <button class="alerts-close" onclick="toggleAlerts()">&times;</button>
+        <h3><i class="fas fa-history"></i> Lịch sử cảnh báo</h3>
+        <ul id="alert-list"></ul>
     </div>
 
-    <a class="back-link" href="{{ url_for('camera.cameras') }}">⬅️ Quay lại danh sách camera</a>
+    <!-- Test Alert Button
+    <button class="test-alert-btn" onclick="testAlert()">
+        <i class="fas fa-flask"></i> Test Alert
+    </button> -->
 
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+    <div class="container">
+        <div class="header">
+            <span class="camera-icon">📹</span>
+            <h1>{{ camera.name }}</h1>
+            <div class="subtitle">📍 {{ camera.location }}</div>
+        </div>
+
+        <div class="content">
+            {% if chunks %}
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ chunks|length }}</span>
+                        <div class="stat-label">Video đã lưu</div>
+                    </div>
+                </div>
+
+                <div class="video-grid">
+                    {% for chunk in chunks %}
+                        <div class="video-card">
+                            <div class="video-header">
+                                <span class="time-icon">🕒</span>
+                                <span class="timestamp">{{ chunk.timestamp.strftime('%d/%m/%Y - %H:%M:%S') }}</span>
+                            </div>
+                            <div class="video-container">
+                                <video controls preload="metadata">
+                                    <source src="{{ url_for('static', filename=chunk.chunk_path) }}" type="video/mp4">
+                                    Trình duyệt không hỗ trợ video.
+                                </video>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="icon">📹</div>
+                    <h3>Chưa có video nào</h3>
+                    <p>Hiện tại chưa có video nào được lưu từ camera này.</p>
+                </div>
+            {% endif %}
+
+            <a class="back-link" href="{{ url_for('camera.cameras') }}">
+                <span>←</span>
+                <span>Quay lại danh sách camera</span>
+            </a>
+        </div>
+    </div>
 </body>
 </html>

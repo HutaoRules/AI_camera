@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, sessio
 from app.model import User, Camera, Video, DangerEvent, VideoChunkMetadata
 from werkzeug.security import check_password_hash
 from app import db
-from app.ultis import gen_frames, write_action
+from app.ultis import gen_frames,record_video
 
 camera_bp = Blueprint('camera', __name__)
 
@@ -37,6 +37,7 @@ def video_feed(camera_id):
     if not camera:
         return "Camera not found", 404
     # Kiểm tra quyền truy cập camera
+    record_video(camera.id, camera.rtsp_url)
 
     return Response(gen_frames(camera.rtsp_url),
                     mimetype='multipart/x-mixed-replace; boundary=frame')

@@ -28,6 +28,9 @@ class DangerEvent(db.Model):
     event_type = db.Column(db.String(100))
     description = db.Column(db.String(300))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    video = db.relationship('Video', backref='danger_events', lazy=True)
+
 
 class VideoChunkMetadata(db.Model):
     id = db.Column(db.Integer, primary_key=True)

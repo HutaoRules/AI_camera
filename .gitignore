@@ -1,2 +1,5 @@
 *.onnx
 *.mp4
+*.json
+#__pycache__
+*.pyc

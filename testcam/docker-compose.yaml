@@ -1,0 +1,35 @@
+version: "3"
+services:
+  rtsp-server:
+    image: bluenviron/mediamtx:1.12.0-ffmpeg
+    container_name: rtsp_server
+    ports:
+      - "8554:8554"
+      - "1936:1935"
+      - "9997:9997"
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+    environment:
+      - MTX_LOGLEVEL=info
+    networks:
+      - ai_cam_net   # đổi tên ở đây
+
+  webcam-streamer:
+    image: jrottenberg/ffmpeg:4.4-ubuntu
+    container_name: webcam_streamer
+    devices:
+      - "/dev/video0:/dev/video0"
+    command: >
+      -f v4l2 -i /dev/video0
+      -vcodec libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-server:8554/webcam
+    depends_on:
+      - rtsp-server
+    networks:
+      - ai_cam_net   # đổi tên ở đây
+    stop_signal: SIGINT
+    restart: "no"
+
+networks:
+  ai_cam_net:         # và khai báo tên mới ở đây
+    driver: bridge

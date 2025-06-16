@@ -1,9 +1,9 @@
-from rtmo import tracker, process_frame
+from rtmo import process_frame
 import cv2
 from pub_sub_producer import publisher, topic_path, send_keypoints
 import onnxruntime as ort
 from argparse import Namespace
-from src.detection.bytetrack_utils.byte_tracker import BYTETracker
+from bytetrack_utils.byte_tracker import BYTETracker
 import datetime
 
 onnx_path ="/home/nvt/Workspaces/AI_camera/src/detection/end2end.onnx"
@@ -41,17 +41,14 @@ def main(video_path, cam_id):
 
         results = process_frame(frame, session, tracker)
         #tack pid va keypoints
-        if not results:
+        if not results['pid']:
             continue
-        for result in results:
-            pid = result['pid']
-            keypoints = result['keypoints']
-
+        print(results)
         # Gửi kết quả lên Pub/Sub
         send_keypoints({
             'cam_id': cam_id,
-            'pid': pid,
-            'keypoints': keypoints,
+            'pid': results['pid'],
+            'keypoints': results['keypoints'],
             'timestamp': datetime.datetime.now().isoformat()
         })
 

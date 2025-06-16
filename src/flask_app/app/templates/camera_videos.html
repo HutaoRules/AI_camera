@@ -2,106 +2,343 @@
 <html>
 <head>
     <title>Video của {{ camera.name }}</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+    /* ==========================================================================
+       BẮT ĐẦU PHẦN CSS TỪ TEMPLATE
+       ========================================================================== */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        .header {
-            width: 100%;
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px 0;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        position: relative;
+    }
 
-        .header h2 {
-            margin: 0;
-            font-size: 26px;
-        }
+    /* Hình nền động */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('data:image/svg+xml,<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.08)"/><circle cx="90" cy="30" r="0.5" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        z-index: -1;
+        animation: float 20s ease-in-out infinite;
+    }
 
-        .back-link {
-            display: inline-block;
-            margin-top: 8px;
-            color: #ecf0f1;
-            text-decoration: underline;
-            font-size: 16px;
-        }
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
 
-        .content {
-            width: 90%;
-            max-width: 1000px;
-            margin: 40px auto;
-        }
+    .main-container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 25px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 800px; /* Tăng chiều rộng tối đa cho phù hợp với video */
+        padding: 40px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        animation: slideUp 0.8s ease-out;
+    }
 
-        .video-card {
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    .main-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #3498db, #2ecc71, #f39c12, #e74c3c);
+        background-size: 300% 300%;
+        animation: gradientShift 3s ease infinite;
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .page-title {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        color: #2c3e50;
+        font-weight: 300;
+    }
+
+    .page-subtitle {
+        color: #7f8c8d;
+        font-size: 1.2em;
+        margin-bottom: 30px;
+        font-weight: 400;
+    }
+
+    .navigation-section {
+        margin-top: 40px;
+        padding-top: 30px;
+        border-top: 2px solid #ecf0f1;
+    }
+
+    .back-link {
+        color: #3498db;
+        text-decoration: none;
+        font-size: 1.1em;
+        font-weight: 600;
+        padding: 12px 25px;
+        border: 2px solid #3498db;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .back-link:hover {
+        background: #3498db;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+    }
+
+    /* ==========================================================================
+       CSS TÙY CHỈNH CHO TRANG NÀY
+       ========================================================================== */
+
+    /* Khung chứa stream video trực tiếp */
+    .live-feed-container {
+        margin-bottom: 30px;
+        background: #f4f6f9;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: inset 0 3px 6px rgba(0,0,0,0.08);
+    }
+
+    .live-feed-container h3 {
+        font-size: 1.4em;
+        color: #34495e;
+        margin-bottom: 15px;
+        font-weight: 600;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .live-feed-container img {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        border: 5px solid white;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    /* Nút xem lại video */
+    .recordings-link {
+        display: block;
+        text-decoration: none;
+        padding: 20px 25px;
+        border-radius: 15px;
+        font-size: 1.2em;
+        font-weight: 600;
+        color: white;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        background: linear-gradient(135deg, #f39c12, #e67e22); /* Màu cam */
+    }
+
+    .recordings-link:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    }
+
+    .recordings-link .link-icon {
+        margin-right: 12px;
+        font-size: 1.3em;
+    }
+
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .main-container {
+            margin: 10px;
             padding: 20px;
-            margin-bottom: 30px;
+            max-width: 95vw;
         }
 
-        .video-card video {
-            width: 100%;
-            border-radius: 6px;
+        .page-title {
+            font-size: 2em;
+        }
+    }
+</style>
+
+    <script>
+        // Socket.IO và Alert System
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+        let alertCount = 0;
+
+        // Toggle alerts visibility
+        function toggleAlerts() {
+            const alerts = document.getElementById('alerts');
+            alerts.style.display = alerts.style.display === 'none' || alerts.style.display === '' ? 'block' : 'none';
         }
 
-        .video-info {
-            margin-top: 10px;
+        // Update alerts toggle text
+        function updateAlertsToggle() {
+            const toggle = document.querySelector('.alerts-toggle');
+            if (alertCount > 0) {
+                toggle.innerHTML = `<i class="fas fa-bell"></i> Lịch sử cảnh báo (${alertCount})`;
+                toggle.style.background = 'rgba(231, 76, 60, 0.8)';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bell"></i> Lịch sử cảnh báo';
+                toggle.style.background = 'rgba(0, 0, 0, 0.7)';
+            }
         }
 
-        .video-info p {
-            margin: 4px 0;
-            font-size: 16px;
-        }
+        // Handle new alerts
+        socket.on('new_alert', function(data) {
+            alertCount++;
+            updateAlertsToggle();
 
-        .alert-list {
-            margin-top: 10px;
-            padding-left: 20px;
-        }
+            // Add to alert history
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `<i class="fas fa-exclamation-circle"></i> [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
 
-        .alert-list li {
-            margin-bottom: 6px;
-            color: #e74c3c;
-            font-size: 15px;
-        }
+            // Create notification popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-triangle notification-icon"></i>
+                <strong>Cảnh báo:</strong> '${data.alert}' trên Camera ${data.camera_id}
+            `;
+            container.appendChild(notification);
 
-        .no-alert {
-            color: #7f8c8d;
-            font-style: italic;
-        }
-    </style>
+            // Play alert sound
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    container.removeChild(notification);
+                }
+            }, 5000);
+        });
+
+        // Add loading animation to menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = 'block';
+                
+                // Hide spinner after navigation (in case navigation is slow)
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            });
+        });
+
+        // Initialize alerts toggle
+        updateAlertsToggle();
+
+        // Add entrance animation delay to menu items
+        document.querySelectorAll('.menu-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+            item.style.animation = 'slideUp 0.6s ease-out forwards';
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+        });
+
+        // Reveal menu items one by one
+        setTimeout(() => {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            });
+        }, 300);
+    </script>
+
 </head>
 <body>
+        <!-- Alerts Toggle Button -->
+    <button class="alerts-toggle" onclick="toggleAlerts()">
+        <i class="fas fa-bell"></i> Lịch sử cảnh báo
+    </button>
 
-<!-- PHẦN HEADER -->
-<div class="header">
-    <h2>Danh sách video của {{ camera.name }} ({{ camera.location }})</h2>
-    <a class="back-link" href="{{ url_for('camera.cameras') }}">⬅️ Chọn camera khác</a>
-</div>
+    <!-- Alert History -->
+    <div id="alerts">
+        <button class="alerts-close" onclick="toggleAlerts()">&times;</button>
+        <h3><i class="fas fa-history"></i> Lịch sử cảnh báo</h3>
+        <ul id="alert-list"></ul>
+    </div>
 
-<!-- PHẦN STREAM TRỰC TIẾP -->
-<div class="live-stream">
-    <h3>🔴 Trực tiếp từ camera</h3>
-    <img src="{{ url_for('camera.video_feed', camera_id=camera.id) }}" alt="Live Stream" style="max-width: 100%; border: 2px solid #444; border-radius: 8px; margin-bottom: 20px;">
-</div>
-<!-- PHẦN XEM LẠI VIDEO -->
-<div class="video-recordings">
-    <h3>🎞️ Xem lại video đã lưu</h3>
-    <a href="{{ url_for('camera.view_recordings', camera_id=camera.id) }}">
-        <button style="padding: 10px 20px; font-size: 16px; border-radius: 6px; background-color: #3498db; color: white; border: none;">
-            📁 Xem lại video
-        </button>
-    </a>
+    <!-- Test Alert Button
+    <button class="test-alert-btn" onclick="testAlert()">
+        <i class="fas fa-flask"></i> Test Alert
+    </button> -->
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+<div class="main-container">
+    
+    <h2 class="page-title">
+        <i class="fas fa-video"></i>
+        {{ camera.name }}
+    </h2>
+    <p class="page-subtitle">{{ camera.location }}</p>
+
+    <div class="live-feed-container">
+        <h3><i class="fas fa-broadcast-tower" style="color: #e74c3c;"></i>Trực tiếp</h3>
+        <img src="{{ url_for('camera.video_feed', camera_id=camera.id) }}" alt="Live Stream from {{ camera.name }}">
+    </div>
+
+    <div class="video-recordings">
+        <a href="{{ url_for('camera.view_recordings', camera_id=camera.id) }}" class="recordings-link">
+            <i class="fas fa-folder-open link-icon"></i>
+            Xem lại các video đã lưu
+        </a>
+    </div>
+
+    <div class="navigation-section">
+        <a class="back-link" href="{{ url_for('camera.cameras') }}">
+            <i class="fas fa-arrow-left"></i>
+            Chọn camera khác
+        </a>
+    </div>
 </div>
 </body>
 </html>

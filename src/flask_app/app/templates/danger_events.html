@@ -1,124 +1,711 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-    <title>Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tìm kiếm sự kiện nguy hiểm</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        /* CSS cho trang tìm kiếm */
-form {
-    width: 80%;
-    max-width: 800px;
-    margin: 30px auto;
-    padding: 20px;
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.event-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 video trên mỗi hàng */
+    gap: 1.5rem;
+    margin-top: 2rem;
 }
 
-form div {
-    margin-bottom: 15px;
-}
-
-form label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-form select, form input {
-    width: 100%;
-    padding: 8px;
-    font-size: 16px;
+.event-card {
     border: 1px solid #ccc;
-    border-radius: 4px;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #fdfdfd;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-form button {
-    padding: 10px 15px;
-    background-color: #c0392b;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    width: 100%;
+.event-info {
+    margin-top: 1rem;
 }
 
-form button:hover {
-    background-color: #e74c3c;
+.event-info p {
+    margin: 0.3rem 0;
 }
 
-/* Định dạng khi form có các lựa chọn đã được chọn */
-form select:focus, form input:focus {
-    outline: none;
-    border-color: #c0392b;
-}
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-h2 {
-    text-align: center;
-    color: #333;
-}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
 
-label, select, input, button {
-    font-family: Arial, sans-serif;
-}
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            animation: slideUp 0.8s ease-out;
+        }
 
-.back-btn {
-    display: inline-block;
-    margin-top: 20px;
-    padding: 10px 20px;
-    background-color: #3498db;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-size: 16px;
-}
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-.back-btn:hover {
-    background-color: #2980b9;
-}
+        .header {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="danger-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23danger-pattern)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h2 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header-subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .back-link {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 12px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-50%) translateX(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-form {
+            padding: 40px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .form-control {
+            padding: 15px 18px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-control option {
+            padding: 10px;
+        }
+
+        .search-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .search-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+        }
+
+        .search-button:hover::before {
+            left: 100%;
+        }
+
+        .search-button:active {
+            transform: translateY(-1px);
+        }
+
+        .search-icon {
+            margin-right: 8px;
+        }
+
+        .behavior-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .behavior-option {
+            display: none;
+        }
+
+        .behavior-card {
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            position: relative;
+        }
+
+        .behavior-card.fighting {
+            border-color: #e74c3c;
+            background: linear-gradient(135deg, #ffe6e6, #ffffff);
+        }
+
+        .behavior-card.falling {
+            border-color: #f39c12;
+            background: linear-gradient(135deg, #fff4e6, #ffffff);
+        }
+
+        .behavior-card.wandering {
+            border-color: #9b59b6;
+            background: linear-gradient(135deg, #f3e6ff, #ffffff);
+        }
+
+        .behavior-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .behavior-card.selected {
+            border-width: 3px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .behavior-icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .behavior-card.fighting .behavior-icon {
+            color: #e74c3c;
+        }
+
+        .behavior-card.falling .behavior-icon {
+            color: #f39c12;
+        }
+
+        .behavior-card.wandering .behavior-icon {
+            color: #9b59b6;
+        }
+
+        .stats-section {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h2 {
+                font-size: 2em;
+            }
+
+            .back-link {
+                position: static;
+                transform: none;
+                margin-bottom: 15px;
+                display: inline-block;
+            }
+
+            .search-form {
+                padding: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .stats-section {
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .loading .search-button {
+            background: #95a5a6;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Enhanced datetime inputs */
+        input[type="datetime-local"] {
+            position: relative;
+        }
+
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23e74c3c"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>') no-repeat;
+            background-size: 20px;
+            cursor: pointer;
+        }
     </style>
+   <script>
+        // Socket.IO và Alert System
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+        let alertCount = 0;
+
+        // Toggle alerts visibility
+        function toggleAlerts() {
+            const alerts = document.getElementById('alerts');
+            alerts.style.display = alerts.style.display === 'none' || alerts.style.display === '' ? 'block' : 'none';
+        }
+
+        // Update alerts toggle text
+        function updateAlertsToggle() {
+            const toggle = document.querySelector('.alerts-toggle');
+            if (alertCount > 0) {
+                toggle.innerHTML = `<i class="fas fa-bell"></i> Lịch sử cảnh báo (${alertCount})`;
+                toggle.style.background = 'rgba(231, 76, 60, 0.8)';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bell"></i> Lịch sử cảnh báo';
+                toggle.style.background = 'rgba(0, 0, 0, 0.7)';
+            }
+        }
+
+        // Handle new alerts
+        socket.on('new_alert', function(data) {
+            alertCount++;
+            updateAlertsToggle();
+
+            // Add to alert history
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `<i class="fas fa-exclamation-circle"></i> [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
+
+            // Create notification popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-triangle notification-icon"></i>
+                <strong>Cảnh báo:</strong> '${data.alert}' trên Camera ${data.camera_id}
+            `;
+            container.appendChild(notification);
+
+            // Play alert sound
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    container.removeChild(notification);
+                }
+            }, 5000);
+        });
+
+        // Add loading animation to menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = 'block';
+                
+                // Hide spinner after navigation (in case navigation is slow)
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            });
+        });
+
+        // Initialize alerts toggle
+        updateAlertsToggle();
+
+        // Add entrance animation delay to menu items
+        document.querySelectorAll('.menu-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+            item.style.animation = 'slideUp 0.6s ease-out forwards';
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+        });
+
+        // Reveal menu items one by one
+        setTimeout(() => {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            });
+        }, 300);
+    </script>
+
 </head>
-
 <body>
-<form method="GET" action="{{ url_for('event.danger_events') }}">
-    <div>
-        <label for="camera">Chọn Camera:</label>
-        <select name="camera" id="camera">
-            <option value="">Tất cả</option>
-            {% for camera in cameras %}
-                <option value="{{ camera.id }}" {% if camera.id == selected_camera %}selected{% endif %}>
-                    {{ camera.name }}
-                </option>
+        <!-- Alerts Toggle Button -->
+    <button class="alerts-toggle" onclick="toggleAlerts()">
+        <i class="fas fa-bell"></i> Lịch sử cảnh báo
+    </button>
+
+    <!-- Alert History -->
+    <div id="alerts">
+        <button class="alerts-close" onclick="toggleAlerts()">&times;</button>
+        <h3><i class="fas fa-history"></i> Lịch sử cảnh báo</h3>
+        <ul id="alert-list"></ul>
+    </div>
+
+    <!-- Test Alert Button
+    <button class="test-alert-btn" onclick="testAlert()">
+        <i class="fas fa-flask"></i> Test Alert
+    </button> -->
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+    <div class="container">
+        <div class="header">
+            <a href="{{ url_for('admin.dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            <div class="header-content">
+                <h2><i class="fas fa-exclamation-triangle"></i> Tìm Kiếm Sự Kiện</h2>
+                <p class="header-subtitle">Tìm kiếm và phân tích các hành vi nguy hiểm được ghi nhận</p>
+            </div>
+        </div>
+
+        <form method="GET" action="{{ url_for('event.danger_events') }}" class="search-form" id="searchForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="camera" class="form-label">
+                        <i class="fas fa-video"></i>
+                        Chọn Camera:
+                    </label>
+                    <select name="camera" id="camera" class="form-control">
+                        <option value="">🎯 Tất cả camera</option>
+                        {% for camera in cameras %}
+                            <option value="{{ camera.id }}" {% if camera.id == selected_camera %}selected{% endif %}>
+                                📹 {{ camera.name }} ({{ camera.location }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="behavior" class="form-label">
+                        <i class="fas fa-user-shield"></i>
+                        Loại hành vi:
+                    </label>
+                    <select name="behavior" id="behavior" class="form-control">
+                        <option value="">🔍 Tất cả hành vi</option>
+                        <option value="Đánh nhau" {% if selected_behavior == 'Đánh nhau' %}selected{% endif %}>
+                            ⚔️ Đánh nhau
+                        </option>
+                        <option value="Ngã" {% if selected_behavior == 'Ngã' %}selected{% endif %}>
+                            ⬇️ Ngã
+                        </option>
+                        <option value="Lảng vảng" {% if selected_behavior == 'Lảng vảng' %}selected{% endif %}>
+                            🚶 Lảng vảng
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="start_timestamp" class="form-label">
+                        <i class="fas fa-calendar-alt"></i>
+                        Từ thời gian:
+                    </label>
+                    <input type="datetime-local" name="start_timestamp" id="start_timestamp" 
+                           value="{{ selected_start_timestamp }}" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="end_timestamp" class="form-label">
+                        <i class="fas fa-calendar-check"></i>
+                        Đến thời gian:
+                    </label>
+                    <input type="datetime-local" name="end_timestamp" id="end_timestamp" 
+                           value="{{ selected_end_timestamp }}" class="form-control">
+                </div>
+
+                <div class="form-group full-width">
+                    <button type="submit" class="search-button" id="searchBtn">
+                        <i class="fas fa-search search-icon"></i>
+                        Tìm kiếm sự kiện
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        {% if events %}
+    <div class="results-section">
+        <h3><i class="fas fa-exclamation-triangle"></i> Kết quả cảnh báo</h3>
+        <div class="event-cards">
+            {% for event in events %}
+                <div class="event-card">
+                    <video width="320" height="240" controls>
+                        <source src="{{ url_for('static', filename=event.video.file_path.replace('./', '')) }}" type="video/mp4">
+                        Trình duyệt của bạn không hỗ trợ video.
+                    </video>
+                    <div class="event-info">
+                        <p><strong>🕒 Thời gian:</strong> {{ event.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</p>
+                        <p><strong>📹 Camera:</strong> {{ event.video.camera.name }} ({{ event.video.camera.location }})</p>
+                        <p><strong>⚠️ Hành vi:</strong> {{ event.event_type }}</p>
+                        <p><strong>📝 Mô tả:</strong> {{ event.description }}</p>
+                    </div>
+                </div>
             {% endfor %}
-        </select>
+        </div>
+    </div>
+{% else %}
+    <p style="text-align:center; font-weight:bold; margin-top: 2rem;">🙈 Không có sự kiện nào phù hợp.</p>
+{% endif %}
+
+
+        <div class="stats-section">
+            <h3><i class="fas fa-chart-bar"></i> Thống kê hệ thống</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ cameras|length }}</div>
+                    <div class="stat-label">Camera hoạt động</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Giám sát liên tục</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">AI</div>
+                    <div class="stat-label">Phân tích thông minh</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">Real-time</div>
+                    <div class="stat-label">Cảnh báo tức thì</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div>
-        <label for="start_timestamp">Từ thời gian:</label>
-        <input type="datetime-local" name="start_timestamp" id="start_timestamp" value="{{ selected_start_timestamp }}">
-    </div>
+    <script>
+        // Form handling and enhancements
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('searchForm');
+            const searchBtn = document.getElementById('searchBtn');
+            
+            // Form submission with loading state
+            form.addEventListener('submit', function(e) {
+                searchBtn.innerHTML = '<span class="spinner"></span>Đang tìm kiếm...';
+                searchBtn.disabled = true;
+                document.body.classList.add('loading');
+                
+                // Re-enable after 3 seconds (in case of slow response)
+                setTimeout(() => {
+                    searchBtn.innerHTML = '<i class="fas fa-search search-icon"></i>Tìm kiếm sự kiện';
+                    searchBtn.disabled = false;
+                    document.body.classList.remove('loading');
+                }, 3000);
+            });
 
-    <div>
-        <label for="end_timestamp">Đến thời gian:</label>
-        <input type="datetime-local" name="end_timestamp" id="end_timestamp" value="{{ selected_end_timestamp }}">
-    </div>
+            // Auto-set end time when start time is selected
+            const startTime = document.getElementById('start_timestamp');
+            const endTime = document.getElementById('end_timestamp');
+            
+            startTime.addEventListener('change', function() {
+                if (this.value && !endTime.value) {
+                    const startDate = new Date(this.value);
+                    const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+                    endTime.value = endDate.toISOString().slice(0, 16);
+                }
+            });
 
-    <div>
-        <label for="behavior">Chọn loại hành vi:</label>
-        <select name="behavior" id="behavior">
-            <option value="">Tất cả</option>
-            <option value="Đánh nhau" {% if selected_behavior == 'Đánh nhau' %}selected{% endif %}>Đánh nhau</option>
-            <option value="Ngã" {% if selected_behavior == 'Ngã' %}selected{% endif %}>Ngã</option>
-            <option value="Lảng vảng" {% if selected_behavior == 'Lảng vảng' %}selected{% endif %}>Lảng vảng</option>
-        </select>
-    </div>
+            // Form validation
+            form.addEventListener('submit', function(e) {
+                const start = new Date(startTime.value);
+                const end = new Date(endTime.value);
+                
+                if (startTime.value && endTime.value && start >= end) {
+                    e.preventDefault();
+                    alert('Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!');
+                    searchBtn.innerHTML = '<i class="fas fa-search search-icon"></i>Tìm kiếm sự kiện';
+                    searchBtn.disabled = false;
+                    document.body.classList.remove('loading');
+                }
+            });
 
-    <button type="submit">Tìm kiếm</button>
-</form>
+            // Add smooth focus transitions
+            const formControls = document.querySelectorAll('.form-control');
+            formControls.forEach(control => {
+                control.addEventListener('focus', function() {
+                    this.parentElement.style.transform = 'scale(1.02)';
+                });
+                
+                control.addEventListener('blur', function() {
+                    this.parentElement.style.transform = 'scale(1)';
+                });
+            });
 
-<!-- Nút Back về trang Dashboard -->
-<a href="{{ url_for('admin.dashboard') }}" class="back-btn">Trở về Dashboard</a>
+            // Quick time presets
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+            const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+            // Add quick preset buttons (if needed)
+            const quickPresets = [
+                { label: 'Hôm nay', start: today, end: now },
+                { label: 'Hôm qua', start: yesterday, end: today },
+                { label: '7 ngày qua', start: thisWeek, end: now }
+            ];
+        });
+
+        // Add entrance animations
+        setTimeout(() => {
+            document.querySelectorAll('.form-group').forEach((group, index) => {
+                group.style.animationDelay = `${index * 0.1}s`;
+                group.style.animation = 'slideUp 0.6s ease-out forwards';
+            });
+        }, 300);
+    </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import onnxruntime as ort
-from src.detection.bytetrack_utils.byte_tracker import BYTETracker, STrack
+from bytetrack_utils.byte_tracker import BYTETracker, STrack
 
 def apply_nms(boxes, scores, iou_threshold=0.65):
     boxes_cv = [[int(x), int(y), int(x2 - x), int(y2 - y)] for x, y, x2, y2 in boxes]
@@ -41,7 +41,11 @@ def process_frame(frame, session, tracker):
     detections_array = np.array([det.tlbr.tolist() + [det.score] for det in detections])
     online_targets = tracker.update(detections_array, [frame.shape[0], frame.shape[1]], (frame.shape[1], frame.shape[0]))
 
-    results = []
+    results = {
+        'pid': [],
+        'keypoints': []
+    }
+
     for t in online_targets:
         pid = t.track_id
         x1, y1, x2, y2 = map(int, t.tlbr)
@@ -51,10 +55,9 @@ def process_frame(frame, session, tracker):
             kps = []
             for j in range(keypoints.shape[2]):
                 x, y, conf = keypoints[0, pid, j]
-                kps.append((float(x), float(y), float(conf)))
-            results.append({
-                'pid': pid,
-                'keypoints': kps
-            })
+                kps.append([float(x), float(y), float(conf)])  # Dạng list thay vì tuple
+            results['pid'].append(pid)
+            results['keypoints'].append(kps)
+
 
     return results

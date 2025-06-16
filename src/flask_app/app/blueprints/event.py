@@ -51,8 +51,8 @@ def danger_events():
                            selected_end_timestamp=selected_end_timestamp,
                            selected_behavior=selected_behavior)
 
-@event_bp.route("/api/receive_action", methods=["POST"])
-def receive_action():
-    data = request.json
-    write_action(data)
-    return jsonify({"status": "received"})
+# @event_bp.route("/api/receive_action", methods=["POST"])
+# def receive_action():
+#     data = request.json
+#     write_action(data)
+#     return jsonify({"status": "received"})
