@@ -1,0 +1,114 @@
+# Smart Surveillance System for Pedestrian Tunnels and Parking Basements
+
+This project implements an AI-based real-time surveillance system that simulates camera input, processes pose estimation and action recognition, and sends alerts via Google Cloud Pub/Sub to a web dashboard.
+
+---
+
+## 1. Simulated Camera Setup (Local)
+
+We use FFmpeg and MediaMTX to simulate RTSP cameras streaming sample videos.
+
+### Steps:
+
+a. Generate a Service Account Key:
+1. In Google Cloud Console:
+
+    Enable Pub/Sub API
+
+    Create a service account with the Pub/Sub Publisher role.
+
+    Download the JSON key file.
+2. Place it in the project:
+
+    src/detection/{key}.json
+
+3. Mount the key and set environment variable in docker-compose.yml
+
+```bash
+volumes:
+  - ./src/detection/camera-ai-458010-xxxx.json:/app/credentials/gcp-key.json
+environment:
+  - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+```
+
+b. Setup Camera
+
+1. Ensure `docker` and `docker-compose` are installed.
+2. Add a sample video to the `videos/` directory:
+```bash
+   mkdir -p videos
+   cp your_video.mp4 videos/demo.mp4
+```
+3. Start RTSP server and camera streamer:
+```bash
+   cd /src/camera
+   docker-compose up --build
+```
+The camera stream will be available at:
+rtsp://localhost:8554/camera1
+
+## 2. Setup on Google Cloud VM
+
+a. Upload Project
+
+Remember to add your Gcloud Key (same at Camera deploy) to the recognition folder before upload
+
+```bash
+gcloud compute scp --recurse ./recognition your-vm-name:~/ --zone=your-zone
+```
+b. SSH to VM
+```bash
+gcloud compute ssh your-vm-name --zone=your-zone
+```
+c. Intall env
+
+You can chose whatever environment you want
+
+In my project, i recommend using miniconda with python > 3.10
+
+d. Install Dependencies 
+```bash
+pip install -r requirements.txt
+```
+
+Active and setup your Gcloud Key
+
+e. Change ngrok domain
+
+```bash
+nano recognition/stgcnpp_infer.py
+```
+change the varible: ngrok_url = "https://028c-2001-ee0-8201-84aa-97fa-a5c9-8106-a51.ngrok-free.app/api/receive_alert"
+to your domain ( you can get the domain after setup ngrok in section below)
+
+d. Run inference
+
+```bash
+python pub_sub_subcriver.py
+```
+## 3. WebApp
+
+a. Setup ngrok
+
+Follow this link for ngrok setup: https://dashboard.ngrok.com/get-started/setup/linux
+
+then start with:
+```bash
+ngrok http 5000
+```
+then coppy the domain to change at GC VM
+
+b. Run webapp
+
+You just need to run 
+```bash
+docker-compose up --build 
+```
+to run all web app, remember to navigate to src/fask_app
+
+
+
+
+### Drive data:
+
+All data if you need (Onnx file, .mp4) in https://drive.google.com/drive/folders/1Rz78Zqxi2RNkT8COgx4qT0yi-6LqZvBw?usp=drive_link
