@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <title>Sửa thông tin camera</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            width: 100%;
+            max-width: 600px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23ffffff" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .header-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .label-icon {
+            font-size: 1.2rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        input[type="text"]:hover {
+            border-color: #c1c8cd;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 35px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+            min-width: 150px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #666;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            flex: 1;
+            justify-content: center;
+            min-width: 150px;
+        }
+
+        .back-link:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            color: #333;
+        }
+
+        .form-description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Input validation styles */
+        input:valid {
+            border-color: #28a745;
+        }
+
+        input:invalid:not(:focus):not(:placeholder-shown) {
+            border-color: #dc3545;
+        }
+
+        /* Loading animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-group {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .form-group:nth-child(2) { animation-delay: 0.1s; }
+        .form-group:nth-child(3) { animation-delay: 0.2s; }
+        .form-group:nth-child(4) { animation-delay: 0.3s; }
+        .button-group { animation-delay: 0.4s; }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                margin: 0;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 25px 20px;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header-icon {
+                font-size: 2.5rem;
+            }
+
+            .form-container {
+                padding: 25px 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button, .back-link {
+                min-width: auto;
+            }
+        }
+
+        /* Focus indicators for accessibility */
+        button:focus, .back-link:focus {
+            outline: 3px solid rgba(102, 126, 234, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Pulse animation for submit button */
+        @keyframes pulse {
+            0% { box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3); }
+            50% { box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5); }
+            100% { box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3); }
+        }
+
+        button:hover {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+       <!-- Alerts Toggle Button -->
+    <button class="alerts-toggle" onclick="toggleAlerts()">
+        <i class="fas fa-bell"></i> Lịch sử cảnh báo
+    </button>
+
+    <!-- Alert History -->
+    <div id="alerts">
+        <button class="alerts-close" onclick="toggleAlerts()">&times;</button>
+        <h3><i class="fas fa-history"></i> Lịch sử cảnh báo</h3>
+        <ul id="alert-list"></ul>
+    </div>
+
+    <!-- Test Alert Button
+    <button class="test-alert-btn" onclick="testAlert()">
+        <i class="fas fa-flask"></i> Test Alert
+    </button> -->
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+    <div class="container">
+        <div class="header">
+            <span class="header-icon">📹</span>
+            <h1>Sửa thông tin camera</h1>
+        </div>
+
+        <div class="form-container">
+            <div class="form-description">
+                Cập nhật thông tin camera để quản lý hệ thống giám sát hiệu quả hơn.
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="name">
+                        <span class="label-icon">🏷️</span>
+                        Tên Camera:
+                    </label>
+                    <input type="text" id="name" name="name" value="{{ camera.name }}" required 
+                           placeholder="Nhập tên camera...">
+                </div>
+
+                <div class="form-group">
+                    <label for="location">
+                        <span class="label-icon">📍</span>
+                        Vị trí:
+                    </label>
+                    <input type="text" id="location" name="location" value="{{ camera.location }}" required 
+                           placeholder="Nhập vị trí camera...">
+                </div>
+
+                <div class="form-group">
+                    <label for="ip_address">
+                        <span class="label-icon">🌐</span>
+                        Địa chỉ IP/RTSP:
+                    </label>
+                    <input type="text" id="ip_address" name="ip_address" value="{{ camera.rtsp_url }}" required 
+                           placeholder="rtsp://admin:password@192.168.1.100:554/stream">
+                </div>
+
+                <div class="button-group">
+                    <button type="submit">
+                        <span>💾</span>
+                        <span>Lưu thay đổi</span>
+                    </button>
+                    
+                    <a href="{{ url_for('admin.admin') }}" class="back-link">
+                        <span>←</span>
+                        <span>Quay lại</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+    <script>
+        // Socket.IO và Alert System
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+        let alertCount = 0;
+
+        // Toggle alerts visibility
+        function toggleAlerts() {
+            const alerts = document.getElementById('alerts');
+            alerts.style.display = alerts.style.display === 'none' || alerts.style.display === '' ? 'block' : 'none';
+        }
+
+        // Update alerts toggle text
+        function updateAlertsToggle() {
+            const toggle = document.querySelector('.alerts-toggle');
+            if (alertCount > 0) {
+                toggle.innerHTML = `<i class="fas fa-bell"></i> Lịch sử cảnh báo (${alertCount})`;
+                toggle.style.background = 'rgba(231, 76, 60, 0.8)';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bell"></i> Lịch sử cảnh báo';
+                toggle.style.background = 'rgba(0, 0, 0, 0.7)';
+            }
+        }
+
+        // Handle new alerts
+        socket.on('new_alert', function(data) {
+            alertCount++;
+            updateAlertsToggle();
+
+            // Add to alert history
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `<i class="fas fa-exclamation-circle"></i> [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
+
+            // Create notification popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-triangle notification-icon"></i>
+                <strong>Cảnh báo:</strong> '${data.alert}' trên Camera ${data.camera_id}
+            `;
+            container.appendChild(notification);
+
+            // Play alert sound
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    container.removeChild(notification);
+                }
+            }, 5000);
+        });
+
+        // Add loading animation to menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = 'block';
+                
+                // Hide spinner after navigation (in case navigation is slow)
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            });
+        });
+
+        // Initialize alerts toggle
+        updateAlertsToggle();
+
+        // Add entrance animation delay to menu items
+        document.querySelectorAll('.menu-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+            item.style.animation = 'slideUp 0.6s ease-out forwards';
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+        });
+
+        // Reveal menu items one by one
+        setTimeout(() => {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            });
+        }, 300);
+    </script>
+</html>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.08)"/><circle cx="90" cy="30" r="0.5" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            z-index: -1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        .dashboard-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #3498db, #2ecc71, #f39c12, #e74c3c);
+            background-size: 300% 300%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dashboard-title {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-weight: 300;
+            position: relative;
+        }
+
+        .dashboard-subtitle {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .menu-item {
+            display: block;
+            text-decoration: none;
+            padding: 20px 25px;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: white;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            border: none;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .menu-item:hover::before {
+            left: 100%;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        }
+
+        .menu-item:active {
+            transform: translateY(-4px) scale(0.98);
+        }
+
+        .menu-admin {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .menu-cameras {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .menu-events {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .menu-icon {
+            margin-right: 12px;
+            font-size: 1.3em;
+        }
+
+        .logout-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #ecf0f1;
+        }
+
+        .logout-link {
+            color: #e74c3c;
+            text-decoration: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            padding: 12px 25px;
+            border: 2px solid #e74c3c;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logout-link:hover {
+            background: #e74c3c;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 20px 25px;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.4);
+            min-width: 300px;
+            font-size: 1em;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+            animation: slideInRight 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                       fadeOutRight 0.6s ease-in 4.4s forwards;
+        }
+
+        .notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .notification-icon {
+            margin-right: 10px;
+            font-size: 1.2em;
+            animation: bounce 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes bounce {
+            to { transform: translateY(-3px); }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOutRight {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        /* Alert List - FIXED POSITIONING */
+        #alerts {
+            position: fixed;
+            top: 70px; /* Moved down to avoid overlapping the button */
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            display: none;
+            z-index: 10000; /* Higher z-index */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        #alerts h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+            font-size: 1.2em;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(52, 152, 219, 0.3);
+        }
+
+        #alerts li {
+            list-style: none;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        #alerts li:last-child {
+            border-bottom: none;
+        }
+
+        #alerts li i {
+            color: #e74c3c;
+            margin-right: 8px;
+        }
+
+        .alerts-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .alerts-close:hover {
+            color: #e74c3c;
+        }
+
+        /* Show alerts toggle - FIXED POSITIONING */
+        .alerts-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            z-index: 9999; /* High z-index but lower than alerts */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .alerts-toggle:hover {
+            background: rgba(0, 0, 0, 0.95);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .alerts-toggle.has-alerts {
+            background: rgba(231, 76, 60, 0.9);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        /* Test Alert Button */
+        .test-alert-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        .test-alert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                margin: 10px;
+                padding: 30px 20px;
+                max-width: 90vw;
+            }
+
+            .dashboard-title {
+                font-size: 2em;
+            }
+
+            .menu-item {
+                font-size: 1em;
+                padding: 18px 20px;
+            }
+
+            .notification-container {
+                top: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+            }
+
+            .notification {
+                min-width: auto;
+                margin-bottom: 10px;
+            }
+
+            #alerts {
+                top: 70px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+
+            .alerts-toggle {
+                left: 10px;
+                top: 10px;
+            }
+
+            .test-alert-btn {
+                left: 10px;
+                bottom: 10px;
+            }
+        }
+
+        /* Loading animation */
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Alerts Toggle Button -->
+    <button class="alerts-toggle" onclick="toggleAlerts()">
+        <i class="fas fa-bell"></i> Lịch sử cảnh báo
+    </button>
+
+    <!-- Alert History -->
+    <div id="alerts">
+        <button class="alerts-close" onclick="toggleAlerts()">&times;</button>
+        <h3><i class="fas fa-history"></i> Lịch sử cảnh báo</h3>
+        <ul id="alert-list"></ul>
+    </div>
+
+    <!-- Test Alert Button
+    <button class="test-alert-btn" onclick="testAlert()">
+        <i class="fas fa-flask"></i> Test Alert
+    </button> -->
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container">
+        <div class="loading-spinner" id="loadingSpinner"></div>
+        
+        <h2 class="dashboard-title">
+            <i class="fas fa-tachometer-alt"></i>
+            Dashboard
+        </h2>
+        <p class="dashboard-subtitle">Hệ thống giám sát an ninh thông minh</p>
+
+        <div class="menu-grid">
+            <a href="{{ url_for('admin.admin') }}" class="menu-item menu-admin">
+                <i class="fas fa-cogs menu-icon"></i>
+                Trang quản trị (Admin)
+            </a>
+
+            <a href="{{ url_for('camera.cameras') }}" class="menu-item menu-cameras">
+                <i class="fas fa-video menu-icon"></i>
+                Kiểm tra các camera
+            </a>
+
+            <a href="{{ url_for('event.danger_events') }}" class="menu-item menu-events">
+                <i class="fas fa-exclamation-triangle menu-icon"></i>
+                Xem lại các hành vi nguy hiểm
+            </a>
+        </div>
+
+        <div class="logout-section">
+            <a class="logout-link" href="{{ url_for('auth.logout') }}">
+                <i class="fas fa-sign-out-alt"></i>
+                Đăng xuất
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO và Alert System
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+        let alertCount = 0;
+
+        // Toggle alerts visibility
+        function toggleAlerts() {
+            const alerts = document.getElementById('alerts');
+            alerts.style.display = alerts.style.display === 'none' || alerts.style.display === '' ? 'block' : 'none';
+        }
+
+        // Update alerts toggle text
+        function updateAlertsToggle() {
+            const toggle = document.querySelector('.alerts-toggle');
+            if (alertCount > 0) {
+                toggle.innerHTML = `<i class="fas fa-bell"></i> Lịch sử cảnh báo (${alertCount})`;
+                toggle.style.background = 'rgba(231, 76, 60, 0.8)';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bell"></i> Lịch sử cảnh báo';
+                toggle.style.background = 'rgba(0, 0, 0, 0.7)';
+            }
+        }
+
+        // Handle new alerts
+        socket.on('new_alert', function(data) {
+            alertCount++;
+            updateAlertsToggle();
+
+            // Add to alert history
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `<i class="fas fa-exclamation-circle"></i> [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
+
+            // Create notification popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-triangle notification-icon"></i>
+                <strong>Cảnh báo:</strong> '${data.alert}' trên Camera ID: ${data.camera_id}
+            `;
+            container.appendChild(notification);
+
+            // Play alert sound
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    container.removeChild(notification);
+                }
+            }, 5000);
+        });
+
+        // Add loading animation to menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = 'block';
+                
+                // Hide spinner after navigation (in case navigation is slow)
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            });
+        });
+
+        // Initialize alerts toggle
+        updateAlertsToggle();
+
+        // Add entrance animation delay to menu items
+        document.querySelectorAll('.menu-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+            item.style.animation = 'slideUp 0.6s ease-out forwards';
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+        });
+
+        // Reveal menu items one by one
+        setTimeout(() => {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            });
+        }, 300);
+    </script>
+</body>
+</html>

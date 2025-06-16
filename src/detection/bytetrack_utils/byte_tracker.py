@@ -3,12 +3,12 @@ from collections import deque
 import os
 import os.path as osp
 import copy
+import torch
+import torch.nn.functional as F
 
 from .kalman_filter import KalmanFilter
 from . import matching
 from .basetrack import BaseTrack, TrackState
-
-import torch
 
 
 class STrack(BaseTrack):
@@ -23,9 +23,6 @@ class STrack(BaseTrack):
 
         self.score = score
         self.tracklet_len = 0
-
-        # keypoints list for use in Actions prediction.
-        self.keypoints_list = deque(maxlen=20)
 
     def predict(self):
         mean_state = self.mean.copy()
@@ -72,7 +69,7 @@ class STrack(BaseTrack):
             self.track_id = self.next_id()
         self.score = new_track.score
 
-    def update(self, new_track, Result_kpts, frame_id):  # ct+++Result_kpts
+    def update(self, new_track, frame_id):
         """
         Update a matched track
         :type new_track: STrack
@@ -90,8 +87,6 @@ class STrack(BaseTrack):
         self.is_activated = True
 
         self.score = new_track.score
-
-        self.keypoints_list.append(Result_kpts)  # ct++++
 
     @property
     # @jit(nopython=True)
@@ -149,24 +144,20 @@ class STrack(BaseTrack):
 
 
 class BYTETracker(object):
-    def __init__(self, track_thresh, track_buffer, match_thresh, frame_rate=30):
+    def __init__(self, args, frame_rate=30):
         self.tracked_stracks = []  # type: list[STrack]
         self.lost_stracks = []  # type: list[STrack]
         self.removed_stracks = []  # type: list[STrack]
 
         self.frame_id = 0
-        # self.args = args
-        # self.det_thresh = args.track_thresh
-        self.track_thresh = track_thresh
-        self.track_buffer = track_buffer
-        self.match_thresh = match_thresh
-
-        self.det_thresh = track_thresh + 0.1
-        self.buffer_size = int(frame_rate / 30.0 * track_buffer)
+        self.args = args
+        #self.det_thresh = args.track_thresh
+        self.det_thresh = args.track_thresh + 0.1
+        self.buffer_size = int(frame_rate / 30.0 * args.track_buffer)
         self.max_time_lost = self.buffer_size
         self.kalman_filter = KalmanFilter()
 
-    def update(self, output_results, Result_kpts, img_info, img_size):   # ct++++
+    def update(self, output_results, img_info, img_size):
         self.frame_id += 1
         activated_starcks = []
         refind_stracks = []
@@ -184,20 +175,15 @@ class BYTETracker(object):
         scale = min(img_size[0] / float(img_h), img_size[1] / float(img_w))
         bboxes /= scale
 
-        remain_inds = scores > self.track_thresh
+        remain_inds = scores > self.args.track_thresh
         inds_low = scores > 0.1
-        inds_high = scores < self.track_thresh
+        inds_high = scores < self.args.track_thresh
 
         inds_second = np.logical_and(inds_low, inds_high)
         dets_second = bboxes[inds_second]
         dets = bboxes[remain_inds]
         scores_keep = scores[remain_inds]
         scores_second = scores[inds_second]
-
-        Result_kpts = torch.stack(Result_kpts, 0)  # 将list[tensor]，转为tensor[tesor]
-        Result_kpts = Result_kpts.cpu().numpy()  # ct++++
-        Result_kpts_first = Result_kpts[remain_inds]  # ct++++
-        Result_kpts_second = Result_kpts[inds_second]  # ct++++
 
         if len(dets) > 0:
             '''Detections'''
@@ -220,15 +206,15 @@ class BYTETracker(object):
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
         dists = matching.iou_distance(strack_pool, detections)
-        # if not self.args.mot20:
-        #     dists = matching.fuse_score(dists, detections)
-        matches, u_track, u_detection = matching.linear_assignment(dists, thresh=self.match_thresh)
+        if not self.args.mot20:
+            dists = matching.fuse_score(dists, detections)
+        matches, u_track, u_detection = matching.linear_assignment(dists, thresh=self.args.match_thresh)
 
         for itracked, idet in matches:
             track = strack_pool[itracked]
             det = detections[idet]
             if track.state == TrackState.Tracked:
-                track.update(detections[idet], Result_kpts_first[idet], self.frame_id)  # ct++++Result_kpts_first[idet]
+                track.update(detections[idet], self.frame_id)
                 activated_starcks.append(track)
             else:
                 track.re_activate(det, self.frame_id, new_id=False)
@@ -249,7 +235,7 @@ class BYTETracker(object):
             track = r_tracked_stracks[itracked]
             det = detections_second[idet]
             if track.state == TrackState.Tracked:
-                track.update(det, Result_kpts_second[idet], self.frame_id)  # ct++++Result_kpts_second[idet]
+                track.update(det, self.frame_id)
                 activated_starcks.append(track)
             else:
                 track.re_activate(det, self.frame_id, new_id=False)
@@ -263,15 +249,12 @@ class BYTETracker(object):
 
         '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
         detections = [detections[i] for i in u_detection]
-
-        Result_kpts_first = [Result_kpts_first[i] for i in u_detection]  # ct++++++
-
         dists = matching.iou_distance(unconfirmed, detections)
-        # if not self.args.mot20:
-        #     dists = matching.fuse_score(dists, detections)
+        if not self.args.mot20:
+            dists = matching.fuse_score(dists, detections)
         matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.7)
         for itracked, idet in matches:
-            unconfirmed[itracked].update(detections[idet], Result_kpts_first[idet], self.frame_id)  # ct++++
+            unconfirmed[itracked].update(detections[idet], self.frame_id)
             activated_starcks.append(unconfirmed[itracked])
         for it in u_unconfirmed:
             track = unconfirmed[it]
@@ -285,7 +268,6 @@ class BYTETracker(object):
                 continue
             track.activate(self.kalman_filter, self.frame_id)
             activated_starcks.append(track)
-
         """ Step 5: Update state"""
         for track in self.lost_stracks:
             if self.frame_id - track.end_frame > self.max_time_lost:

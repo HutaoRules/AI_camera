@@ -1,0 +1,82 @@
+services:
+  rtsp-server:
+    image: bluenviron/mediamtx:1.12.0-ffmpeg
+    container_name: rtsp_server
+    ports:
+      - "8554:8554"      # RTSP
+      - "1936:1935"      # RTMP
+      - "9997:9997"      # HTTP API / Prometheus
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+    environment:
+      - MTX_LOGLEVEL=info
+    networks:
+      - stream_net
+
+  # Camera 1 streamer
+  streamer-cam1:
+    image: jrottenberg/ffmpeg:4.4-scratch
+    container_name: camera-streamer-1
+    stop_signal: SIGKILL
+    stop_grace_period: 5s
+    restart: "no"
+    command: >
+      -re -stream_loop -1 -i /videos/demo.mp4
+      -c copy -f rtsp rtsp://rtsp-server:8554/camera1
+    volumes:
+      - ./videos:/videos
+    depends_on:
+      - rtsp-server
+    networks:
+      - stream_net
+
+  # # Camera 2 streamer
+  # streamer-cam2:
+  #   image: jrottenberg/ffmpeg:4.4-scratch
+  #   container_name: camera-streamer-2
+  #   stop_signal: SIGKILL
+  #   stop_grace_period: 5s
+  #   restart: "no"
+  #   command: >
+  #     -re -stream_loop -1 -i /videos/demo.mp4
+  #     -c copy -f rtsp rtsp://rtsp-server:8554/camera2
+  #   volumes:
+  #     - ./videos:/videos
+  #   depends_on:
+  #     - rtsp-server
+  #   networks:
+  #     - stream_net
+
+  # AI worker cho camera 1
+  ai-worker-cam1:
+    build:
+      context: ../..
+      dockerfile: src/camera/Dockerfile.ai_worker
+    container_name: ai-worker-1
+    command: python3 src/detection/run.py /videos/demo.mp4 cam_01
+    volumes:
+      - ./videos:/videos
+    depends_on:
+      - rtsp-server
+      - streamer-cam1
+    networks:
+      - stream_net
+
+  # # AI worker cho camera 2
+  # ai-worker-cam2:
+  #   build:
+  #     context: ../..
+  #     dockerfile: src/camera/Dockerfile.ai_worker
+  #   container_name: ai-worker-2
+  #   command: python3 src/detection/run.py /videos/demo.mp4 cam_02
+  #   volumes:
+  #     - ./videos:/videos
+  #   depends_on:
+  #     - rtsp-server
+  #     - streamer-cam2
+  #   networks:
+  #     - stream_net
+
+networks:
+  stream_net:
+    driver: bridge

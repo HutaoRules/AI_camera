@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị hệ thống</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h2 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .back-link {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 10px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-50%) translateX(-5px);
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .add-camera-form {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: none;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .camera-card {
+            background: white;
+            border: none;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+        }
+
+        .camera-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .camera-info {
+            flex: 1;
+        }
+
+        .camera-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .camera-location {
+            color: #7f8c8d;
+            font-size: 0.95em;
+        }
+
+        .camera-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .video-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .video-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+            flex-wrap: wrap;
+        }
+
+        .video-item:last-child {
+            border-bottom: none;
+        }
+
+        .video-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .video-icon {
+            color: #e74c3c;
+            font-size: 1.2em;
+        }
+
+        .video-details {
+            flex: 1;
+        }
+
+        .video-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .video-timestamp {
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+
+        .no-videos {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .flash-messages {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h2 {
+                font-size: 2em;
+            }
+
+            .back-link {
+                position: static;
+                transform: none;
+                margin-bottom: 15px;
+                display: inline-block;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .camera-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .camera-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .video-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+
+        /* Animation cho form */
+        .add-camera-form {
+            animation: slideInFromTop 0.6s ease-out;
+        }
+
+        .camera-card {
+            animation: slideInFromBottom 0.6s ease-out;
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInFromBottom {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+        <!-- Alerts Toggle Button -->
+    <button class="alerts-toggle" onclick="toggleAlerts()">
+        <i class="fas fa-bell"></i> Lịch sử cảnh báo
+    </button>
+
+    <!-- Alert History -->
+    <div id="alerts">
+        <button class="alerts-close" onclick="toggleAlerts()">&times;</button>
+        <h3><i class="fas fa-history"></i> Lịch sử cảnh báo</h3>
+        <ul id="alert-list"></ul>
+    </div>
+
+    <!-- Test Alert Button
+    <button class="test-alert-btn" onclick="testAlert()">
+        <i class="fas fa-flask"></i> Test Alert
+    </button> -->
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+
+
+    <div class="container">
+        <div class="header">
+            <a href="{{ url_for('admin.dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Quay lại Dashboard
+            </a>
+            <h2><i class="fas fa-cogs"></i> Trang Quản Trị</h2>
+        </div>
+
+        <div class="content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        <i class="fas fa-check-circle"></i> {{ messages[0] }}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Add Camera Section -->
+            <div class="section">
+                <h3 class="section-title">
+                    <i class="fas fa-plus-circle"></i>
+                    Thêm Camera Mới
+                </h3>
+                <form method="POST" class="add-camera-form">
+                    <input type="hidden" name="action" value="add">
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-camera"></i> Tên Camera:</label>
+                        <input type="text" name="name" required placeholder="Nhập tên camera...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Vị trí:</label>
+                        <input type="text" name="location" required placeholder="Nhập vị trí camera...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-network-wired"></i> Địa chỉ IP:</label>
+                        <input type="text" name="ip_address" required placeholder="192.168.1.100">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Thêm Camera
+                    </button>
+                </form>
+            </div>
+
+            <!-- Camera List Section -->
+            <div class="section">
+                <h3 class="section-title">
+                    <i class="fas fa-list"></i>
+                    Danh Sách Camera và Video
+                </h3>
+
+                {% for cam in cameras %}
+                    <div class="camera-card">
+                        <div class="camera-header">
+                            <div class="camera-info">
+                                <div class="camera-name">
+                                    <i class="fas fa-video"></i> {{ cam.name }}
+                                </div>
+                                <div class="camera-location">
+                                    <i class="fas fa-map-marker-alt"></i> {{ cam.location }}
+                                </div>
+                            </div>
+                            <div class="camera-actions">
+                                <a href="{{ url_for('admin.edit_camera', camera_id=cam.id) }}" class="btn btn-warning">
+                                    <i class="fas fa-edit"></i> Sửa
+                                </a>
+                                <form method="POST" style="display: inline;">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="camera_id" value="{{ cam.id }}">
+                                    <button type="submit" class="btn btn-danger" 
+                                            onclick="return confirm('Bạn có chắc chắn xoá camera này và tất cả video?')">
+                                        <i class="fas fa-trash"></i> Xoá Camera
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {% if cam.videos %}
+                            <div class="video-list">
+                                {% for video in cam.videos %}
+                                    <div class="video-item">
+                                        <div class="video-info">
+                                            <i class="fas fa-play-circle video-icon"></i>
+                                            <div class="video-details">
+                                                <div class="video-name">{{ video.file_path }}</div>
+                                                <div class="video-timestamp">
+                                                    <i class="fas fa-clock"></i> 
+                                                    {{ video.timestamp.strftime('%d/%m/%Y lúc %H:%M:%S') }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="action" value="delete_video">
+                                            <input type="hidden" name="video_id" value="{{ video.id }}">
+                                            <button type="submit" class="btn btn-danger" 
+                                                    onclick="return confirm('Xoá video này?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="no-videos">
+                                <i class="fas fa-film"></i>
+                                <p>Chưa có video nào được ghi lại</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+            // Socket.IO và Alert System
+        const socket = io();
+        const alertSound = new Audio("{{ url_for('static', filename='sounds/sound.mp3') }}");
+        let alertCount = 0;
+
+        // Toggle alerts visibility
+        function toggleAlerts() {
+            const alerts = document.getElementById('alerts');
+            alerts.style.display = alerts.style.display === 'none' || alerts.style.display === '' ? 'block' : 'none';
+        }
+
+        // Update alerts toggle text
+        function updateAlertsToggle() {
+            const toggle = document.querySelector('.alerts-toggle');
+            if (alertCount > 0) {
+                toggle.innerHTML = `<i class="fas fa-bell"></i> Lịch sử cảnh báo (${alertCount})`;
+                toggle.style.background = 'rgba(231, 76, 60, 0.8)';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bell"></i> Lịch sử cảnh báo';
+                toggle.style.background = 'rgba(0, 0, 0, 0.7)';
+            }
+        }
+
+        // Handle new alerts
+        socket.on('new_alert', function(data) {
+            alertCount++;
+            updateAlertsToggle();
+
+            // Add to alert history
+            const alertBox = document.getElementById("alerts");
+            const li = document.createElement("li");
+            li.innerText = `<i class="fas fa-exclamation-circle"></i> [${data.timestamp}] Alert '${data.alert}' on Camera ${data.camera_id}`;
+            alertBox.prepend(li);
+
+            // Create notification popup
+            const container = document.getElementById("notification-container");
+            const notification = document.createElement("div");
+            notification.className = "notification";
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-triangle notification-icon"></i>
+                <strong>Cảnh báo:</strong> '${data.alert}' trên Camera ${data.camera_id}
+            `;
+            container.appendChild(notification);
+
+            // Play alert sound
+            alertSound.play().catch(e => console.warn("Không thể phát âm thanh:", e));
+
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    container.removeChild(notification);
+                }
+            }, 5000);
+        });
+
+        // Add loading animation to menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = 'block';
+                
+                // Hide spinner after navigation (in case navigation is slow)
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            });
+        });
+
+        // Initialize alerts toggle
+        updateAlertsToggle();
+
+        // Add entrance animation delay to menu items
+        document.querySelectorAll('.menu-item').forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+            item.style.animation = 'slideUp 0.6s ease-out forwards';
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+        });
+
+        // Reveal menu items one by one
+        setTimeout(() => {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            });
+        }, 300);
+</script>
+
+</html>
