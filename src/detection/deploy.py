@@ -6,7 +6,7 @@ from argparse import Namespace
 from bytetrack_utils.byte_tracker import BYTETracker
 import datetime
 
-onnx_path ="/home/nvt/Workspaces/AI_camera/src/detection/end2end.onnx"
+onnx_path ="/app/src/detection/end2end.onnx"
 session = ort.InferenceSession(onnx_path)
 
 tracker_args = Namespace(

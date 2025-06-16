@@ -5,31 +5,36 @@ services:
     container_name: rtsp_server
     ports:
       - "8554:8554"
-      - "1936:1935"
+      - "1935:1935"   # fix lại cổng RTMP đúng
       - "9997:9997"
     volumes:
       - ./mediamtx.yml:/mediamtx.yml
     environment:
       - MTX_LOGLEVEL=info
     networks:
-      - ai_cam_net   # đổi tên ở đây
+      - ai_cam_net
 
   webcam-streamer:
     image: jrottenberg/ffmpeg:4.4-ubuntu
     container_name: webcam_streamer
+    privileged: true
+
     devices:
       - "/dev/video0:/dev/video0"
     command: >
-      -f v4l2 -i /dev/video0
+      -loglevel debug
+      -f v4l2 -input_format yuyv422 -video_size 640x480 -framerate 30 -i /dev/video0
+      -vf format=yuv420p
       -vcodec libx264 -preset ultrafast -tune zerolatency
       -f rtsp rtsp://rtsp-server:8554/webcam
+
     depends_on:
       - rtsp-server
     networks:
-      - ai_cam_net   # đổi tên ở đây
+      - ai_cam_net
     stop_signal: SIGINT
     restart: "no"
 
 networks:
-  ai_cam_net:         # và khai báo tên mới ở đây
+  ai_cam_net:
     driver: bridge

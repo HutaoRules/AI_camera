@@ -48,44 +48,43 @@ def write_action(camera_name, timestamp, alert):
 
 buffer_dict = {}  # Global dict nếu bạn chạy nhiều camera
 
-def record_video(camera_id, rtsp_url, duration=1800):
-    now = datetime.utcnow()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H-%M")
-    static_dir = os.path.join(current_app.root_path, 'static')
-    folder = os.path.join(static_dir, 'videos', str(camera_id), date_str)
+def record_video(app, camera_id, rtsp_url, duration=1800):
+    with app.app_context():
+        now = datetime.utcnow()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H-%M")
+        static_dir = os.path.join(app.root_path, 'static')
+        folder = os.path.join(static_dir, 'videos', str(camera_id), date_str)
 
-    os.makedirs(folder, exist_ok=True)
+        os.makedirs(folder, exist_ok=True)
+        filepath = f"videos/{camera_id}/{date_str}/{time_str}.mp4"
 
-    filepath =  f"videos/{camera_id}/{date_str}/{time_str}.mp4"
-    full_timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+        cap = cv2.VideoCapture(rtsp_url)
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(os.path.join(static_dir, filepath), fourcc, 20.0, (640, 480))
 
-    cap = cv2.VideoCapture(rtsp_url)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(filepath, fourcc, 20.0, (640, 480))
+        alert_frame_buffer = deque(maxlen=300)
+        buffer_dict[camera_id] = alert_frame_buffer
 
-    alert_frame_buffer = deque(maxlen=300)  # 15s * 20fps
-    buffer_dict[camera_id] = alert_frame_buffer
+        start = time.time()
+        while time.time() - start < duration:
+            ret, frame = cap.read()
+            if ret:
+                out.write(frame)
+                alert_frame_buffer.append(frame)
+            else:
+                break
 
-    start = time.time()
-    while time.time() - start < duration:
-        ret, frame = cap.read()
-        if ret:
-            out.write(frame)
-            alert_frame_buffer.append(frame)
-        else:
-            break
+        cap.release()
+        out.release()
 
-    cap.release()
-    out.release()
-
-    new_video_chunk = VideoChunkMetadata(
-        camera_id=camera_id,
-        file_path=filepath,
-        timestamp=full_timestamp
-    )
-    db.session.add(new_video_chunk)
-    db.session.commit()
+        new_video_chunk = VideoChunkMetadata(
+            camera_id=camera_id,
+            chunk_path=filepath,
+            timestamp=now  # ✅ đây là kiểu datetime.datetime
+        )
+        db.session.add(new_video_chunk)
+        db.session.commit()
 
 
 def create_alert_video(buffer, camera_name, timestamp):
