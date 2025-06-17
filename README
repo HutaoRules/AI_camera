@@ -106,6 +106,13 @@ docker-compose up --build
 ```
 to run all web app, remember to navigate to src/fask_app
 
+Or you could run with no docker-compose with:
+```bash
+python create_db.py
+
+python run.py
+'''
+
 
 
 
