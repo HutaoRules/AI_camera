@@ -31,14 +31,9 @@ def camera_videos(camera_id):
 
 @camera_bp.route('/video_feed/<int:camera_id>')
 def video_feed(camera_id):
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
     camera = Camera.query.get(camera_id)
     if not camera:
         return "Camera not found", 404
-    # Kiểm tra quyền truy cập camera
-    record_video(camera.id, camera.rtsp_url)
-
     return Response(gen_frames(camera.rtsp_url),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 

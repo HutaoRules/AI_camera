@@ -56,11 +56,16 @@ services:
     command: python3 src/detection/run.py /videos/demo.mp4 cam_01
     volumes:
       - ./videos:/videos
+      - /home/nvt/Workspaces/AI_camera/src/detection/camera-ai-458010-cb79d14ad1c7.json:/app/credentials/gcp-key.json
+      - /home/nvt/Workspaces/AI_camera/src/detection/end2end.onnx:/app/src/detection/end2end.onnx
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
     depends_on:
       - rtsp-server
       - streamer-cam1
     networks:
       - stream_net
+
 
   # # AI worker cho camera 2
   # ai-worker-cam2:
